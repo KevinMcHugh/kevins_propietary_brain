@@ -30,14 +30,12 @@ module KevinsPropietaryBrain
       (character_preference & [character_1, character_2]).first
     end
     def character_preference
-      [:PaulRegretPlayer,:PedroRamirezPlayer,
-      :RoseDoolanPlayer,:KitCarlsonPlayer,
-      :SidKetchumPlayer,:ElGringoPlayer,
-      :VultureSamPlayer,:SuzyLafayettePlayer,
-      :WillyTheKidPlayer,:SlabTheKillerPlayer,
-      :CalamityJanetPlayer,:JourdonnaisPlayer,
-      :LuckyDukePlayer,:BartCassidyPlayer,
-      :JesseJonesPlayer,:BlackJackPlayer]
+      [:PaulRegretPlayer,:JourdonnaisPlayer,:RoseDoolanPlayer,
+       :VeraCusterPlayer,:BlackJackPlayer,:BartCassidyPlayer,
+       :SidKetchumPlayer,:SlabTheKillerPlayer,:JesseJonesPlayer,
+       :LuckyDukePlayer,:SuzyLafayettePlayer,:WillyTheKidPlayer,
+       :VultureSamPlayer,:CalamityJanetPlayer,:PedroRamirezPlayer,:KitCarlsonPlayer,
+       :ElGringoPlayer,]
     end
 
     #This method is called on your brain when you are the target of a card that has a bang action (a missable attack). Your brain is given the card that attacked them.  The method should return a card from your hand
@@ -72,45 +70,59 @@ module KevinsPropietaryBrain
       play_guns
       player.hand.each do |card|
         target = find_target(card)
-        next if card.type == Card.missed_card || !target
-        next if card.type == Card.jail_card && !target || target.sheriff?
-        next if card.type == Card.bang_card && over_bang_limit(bangs_played)
+        next if skippable?(card, target, bangs_played)
         bangs_played += 1 if card.type == Card.bang_card
         player.play_card(card, target, :hand)
       end
     end
+
     def draw_choice(*choices)
-      choices.second
-    end
-    def notify(event)
-      @events << event
-      if event[:target].try(:sheriff?)
-        @sheriff_shooters << event[:targetter]
-      end
+      choices.last
     end
 
     private
-    def over_bang_limit(n)
+    def over_bang_limit?(n)
       return false if player.character == "Character::WillyTheKidPlayer"
       return false if player.in_play.detect{ |x| x.type == Card.volcanic_card }
       return false if n < 1
       true
     end
 
+    def skippable?(card, target, bangs_played)
+      missed = card.type == Card.missed_card
+      unjailable = card.type == Card.jail_card && target.sheriff?
+      too_many_bangs = card.type == Card.bang_card && over_bang_limit?(bangs_played)
+      !target || missed || unjailable || too_many_bangs
+    end
+
     def find_target(card)
       if role == 'sheriff'
-        sheriffs_target(card)
+        find_target_for_sheriff(card)
       elsif role == 'outlaw'
-        player.players_in_range_of(card).include?(sheriff) ? sheriff : weakest_player_in_range_of(card)
+        find_target_for_outlaw(card)
       elsif role == 'renegade'
-        if player.players.size > 1
-          weakest_non_sheriff_in_range_of(card)
-        else
-          sheriff
-        end
+        find_target_for_renegade(card)
       elsif role == 'deputy'
-        sheriffs_target(card)
+        weakest_non_sheriff_in_range_of(card)
       end
+    end
+
+    def find_target_for_renegade(card)
+      if player.players.size > 1
+        weakest_non_sheriff_in_range_of(card)
+      else
+        sheriff
+      end
+    end
+
+    def find_target_for_outlaw(card)
+      player.players_in_range_of(card).include?(sheriff) ? sheriff : weakest_player_in_range_of(card)
+    end
+
+    def find_target_for_sheriff(card)
+      players_in_range = player.players_in_range_of(card)
+      weakest_players = players_in_range.sort_by { |player| player.health }
+      (weakest_players & sheriff_shooters).first || weakest_players.first
     end
 
     def weakest_non_sheriff_in_range_of(card)
@@ -124,12 +136,6 @@ module KevinsPropietaryBrain
       in_range.min_by { |p| p.health } || in_range.first
     end
 
-    def sheriffs_target(card)
-      players_in_range = player.players_in_range_of(card)
-      targets = (sheriff_shooters & players_in_range).sort_by{ |player| player.health }
-      targets.first || weakest_non_sheriff_in_range_of(card)
-    end
-
     def sheriff
       player.players.find(&:sheriff?)
     end
@@ -138,8 +144,13 @@ module KevinsPropietaryBrain
       guns = player.hand.find_all(&:gun?)
       return if guns.empty?
       longest_ranged_gun = guns.max { |gun| gun.range }
+      player.play_card(longest_ranged_gun) if should_play_gun?(longest_ranged_gun)
+    end
+
+    def should_play_gun?(longest_ranged_gun)
       existing_gun = player.in_play.find(&:gun?)
-      player.play_card(longest_ranged_gun) if !existing_gun || (longest_ranged_gun && longest_ranged_gun.range > existing_gun.range)
+      return true unless existing_gun
+      longest_ranged_gun && longest_ranged_gun.range > existing_gun.range
     end
   end
 end
