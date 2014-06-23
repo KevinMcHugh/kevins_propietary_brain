@@ -56,8 +56,11 @@ module KevinsPropietaryBrain
     #This method is called if your hand is over the hand limit, it returns the card that you would like to discard.
     # Returning nil or a card you don't have is a very bad idea. Bad things will happen to you.
     def discard
-      non_damage_dealing = player.hand.find {|card| !card.damage_dealing? }
-      non_damage_dealing || player.hand.first
+      ordered = player.hand.map do |card|
+        i = card_preference.map { |preference| card.type == preference }.index(true)
+        {card: card, index: i}
+      end
+      ordered.sort_by { |h| h[:index] || 99 }.last.try(:fetch, :card)
     end
 
     #This is the method that is called on your turn.
