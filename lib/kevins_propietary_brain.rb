@@ -3,11 +3,12 @@ require "kevins_propietary_brain/version"
 module KevinsPropietaryBrain
 ## All Brains must be put in the PlayerBrain module to allow them to be picked up by the game initalizer
   class Brain
-    attr_accessor :player
+    attr_accessor :player, :role
+    attr_reader :sheriff_shooters
 
-    #The brain is instantiated with it's role.  So that it can be used later in the game
-    def initialize(role)
-      @role = role
+    def initialize
+      @events = []
+      @sheriff_shooters = []
     end
 
     # you have the option of picking from many cards, pick the best one.
@@ -79,13 +80,16 @@ module KevinsPropietaryBrain
       end
     end
     def draw_choice(*choices)
-      choices.first
+      choices.second
     end
-    def notify(event); end
+    def notify(event)
+      @events << event
+      if event[:target].try(:sheriff?)
+        @sheriff_shooters << event[:targetter]
+      end
+    end
 
     private
-    attr_reader :role
-
     def over_bang_limit(n)
       return false if player.character == "Character::WillyTheKidPlayer"
       return false if player.in_play.detect{ |x| x.type == Card.volcanic_card }
@@ -95,7 +99,7 @@ module KevinsPropietaryBrain
 
     def find_target(card)
       if role == 'sheriff'
-        weakest_player_in_range_of(card)
+        sheriffs_target(card)
       elsif role == 'outlaw'
         player.players_in_range_of(card).include?(sheriff) ? sheriff : weakest_player_in_range_of(card)
       elsif role == 'renegade'
@@ -105,7 +109,7 @@ module KevinsPropietaryBrain
           sheriff
         end
       elsif role == 'deputy'
-        weakest_non_sheriff_in_range_of(card)
+        sheriffs_target(card)
       end
     end
 
@@ -118,6 +122,12 @@ module KevinsPropietaryBrain
     def weakest_player_in_range_of(card)
       in_range = player.players_in_range_of(card)
       in_range.min_by { |p| p.health } || in_range.first
+    end
+
+    def sheriffs_target(card)
+      players_in_range = player.players_in_range_of(card)
+      targets = (sheriff_shooters & players_in_range).sort_by{ |player| player.health }
+      targets.first || weakest_non_sheriff_in_range_of(card)
     end
 
     def sheriff
