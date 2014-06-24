@@ -40,6 +40,7 @@ module KevinsPropietaryBrain
 
     #This method is called on your brain when you are the target of a card that has a bang action (a missable attack). Your brain is given the card that attacked them.  The method should return a card from your hand
     def target_of_bang(card, targetter, missed_needed)
+      player.tap_badge("annoyedly")
       if player.hand.count{ |x| x.type == Card.missed_card } >= missed_needed
         player.hand.select{|x| x.type == Card.missed_card}.first(missed_needed)
       else
@@ -47,6 +48,7 @@ module KevinsPropietaryBrain
       end
     end
     def target_of_indians(card, targetter)
+      player.tap_badge("menacingly")
       player.from_hand(Card.bang_card)
     end
     def target_of_duel(card, targetter)
@@ -66,7 +68,6 @@ module KevinsPropietaryBrain
     #This is the method that is called on your turn.
     def play
       bangs_played = 0
-
       while !player.hand.find_all(&:draws_cards?).empty?
         player.hand.find_all(&:draws_cards?).each {|card| player.play_card(card)}
       end
