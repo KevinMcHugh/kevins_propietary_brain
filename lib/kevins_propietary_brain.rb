@@ -88,7 +88,7 @@ module KevinsPropietaryBrain
       end
     end
 
-    def draw_choice(*choices)
+    def draw_choice(choices)
       choices.last
     end
 
