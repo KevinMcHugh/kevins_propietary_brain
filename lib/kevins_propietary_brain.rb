@@ -3,6 +3,14 @@ require "kevins_propietary_brain/version"
 module KevinsPropietaryBrain
 ## All Brains must be put in the PlayerBrain module to allow them to be picked up by the game initalizer
   class Brain
+    # Pick some number of emoji to represent your brain.
+    # by convention, all brain emoji end with `:neckbeard:`.
+    # The list of supported emojis can be found
+    # here: http://www.emoji-cheat-sheet.com/
+    def self.emoji
+      ':octopus::neckbeard:'
+    end
+
     attr_accessor :player, :role
     attr_reader :sheriff_shooters
 
